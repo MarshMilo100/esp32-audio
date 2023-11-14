@@ -1,9 +1,21 @@
 #include <Arduino.h>
-#include "BluetoothA2DPSink.h"
+#include "AudioTools.h"
+#include "AudioLibs/Communication.h"
+#include "AudioCodecs/CodecSBC.h"
 
-BluetoothA2DPSink a2dp_sink;
+#undef DEBUG
 
-#define DEBUG
+ESPNowStream now;
+I2SStream i2s;
+AudioInfo info(44100, 2, 32); // may need to adjust
+EncodedAudioStream decoder(&i2s, new SBCDecoder(256)); // decode and write to I2S - ESP Now is limited to 256 bytes
+StreamCopy copier(decoder, now);
+const char *peers[] = {"A8:48:FA:0B:93:02"};
+
+#ifdef DEBUG
+CsvOutput<int32_t> csvStream(Serial);
+StreamCopy copier_serial(csvStream, i2s); // copy i2sStream to csvStream
+#endif
 
 // Then somewhere in your sketch:
 void read_data_stream(const uint8_t *data, uint32_t length) 
@@ -24,27 +36,28 @@ void read_data_stream(const uint8_t *data, uint32_t length)
 void setup() 
 {
     Serial.begin(115200);
-    
-    static const i2s_config_t i2s_config = 
-    {
-        .mode = (i2s_mode_t) (I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN),
-        .sample_rate = 44100, // corrected by info from bluetooth
-        .bits_per_sample = (i2s_bits_per_sample_t) 16, /* the DAC module will only take the 8bits from MSB */
-        .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-        .communication_format = (i2s_comm_format_t)I2S_COMM_FORMAT_STAND_MSB, 
-        .intr_alloc_flags = 0, // default interrupt priority
-        .dma_buf_count = 8,
-        .dma_buf_len = 64,
-        .use_apll = true
-    };
 
-    Serial.println("starting A2DP...");
-    a2dp_sink.set_i2s_config(i2s_config);
-    a2dp_sink.set_auto_reconnect(true);
+    Serial.println("Starting I2S...");
+    auto i2s_config = i2s.defaultConfig(TX_MODE);
+    i2s_config.copyFrom(info);
+    i2s_config.signal_type = Analog;
+    i2s_config.i2s_format = I2S_STD_FORMAT;
+    i2s_config.use_apll = true;
+    i2s_config.is_master = true;
+    i2s.begin(i2s_config);
+
+    Serial.println("Starting ESP-NOW...");
+    auto cfg_now = now.defaultConfig();
+    cfg_now.mac_address = "A8:48:FA:0B:93:01";
+    now.begin(cfg_now);
+    now.addPeers(peers);
+
+    Serial.println("Starting Decoder...");
+    decoder.begin();
+
 #ifdef DEBUG
-    a2dp_sink.set_stream_reader(read_data_stream, false);
+    csvStream.begin(info);
 #endif
-    a2dp_sink.start("WoofWoof");
 
     // Enable LED
     pinMode(2, OUTPUT);
@@ -53,4 +66,9 @@ void setup()
 
 void loop() 
 {
+    copier.copy();
+
+#ifdef DEBUG
+    copier_serial.copy();
+#endif /* DEBUG */
 }
