@@ -3,7 +3,7 @@
 #include "AudioLibs/Communication.h"
 #include "AudioCodecs/CodecSBC.h"
 
-#undef DEBUG
+#define DEBUG
 
 #define PIN_I2S_MCK   3
 #define c3_frequency  130.81
@@ -11,7 +11,7 @@
 
 I2SStream i2s;
 ConverterFillLeftAndRight<int16_t> bothChannels(RightIsEmpty);
-AudioInfo info(44100, 2, 32); // may need to adjust
+AudioInfo info(32000,1,16); // may need to adjust
 
 ESPNowStream now;
 SBCEncoder sbc;

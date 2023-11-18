@@ -3,7 +3,7 @@
 #include "AudioLibs/Communication.h"
 #include "AudioCodecs/CodecSBC.h"
 
-#undef DEBUG
+#define DEBUG
 
 ESPNowStream now;
 I2SStream i2s;
