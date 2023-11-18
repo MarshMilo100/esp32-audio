@@ -3,7 +3,8 @@
 #include "AudioLibs/Communication.h"
 #include "AudioCodecs/CodecSBC.h"
 
-#define DEBUG
+#undef DEBUG
+
 
 #define PIN_I2S_MCK   3
 #define c3_frequency  130.81
